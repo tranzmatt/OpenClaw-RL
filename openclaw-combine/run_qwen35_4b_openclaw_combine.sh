@@ -37,13 +37,14 @@ export RAY_health_check_timeout_ms=30000
 export RAY_num_heartbeats_timeout=60
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
-SLIME_ROOT="$(cd -- "${SCRIPT_DIR}/../slime" &>/dev/null && pwd)"
+REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." &>/dev/null && pwd)"
+SLIME_ROOT="${REPO_ROOT}/slime"
 source "${SLIME_ROOT}/scripts/models/qwen3.5-4B.sh"
 
-HF_CKPT=${HF_CKPT:-/absolute/path/to/Qwen35-4B}
+HF_CKPT=${HF_CKPT:-/data_storage/wyj/systems/huggingface/hub/Qwen35-4B}
 REF_LOAD=${REF_LOAD:-${HF_CKPT}}
 SAVE_CKPT=${SAVE_CKPT:-${REPO_ROOT}/ckpt/qwen35-4b-openclaw-combine}
-PRM_MODEL_PATH=${PRM_MODEL_PATH:-/absolute/path/to/Qwen35-4B}
+PRM_MODEL_PATH=${PRM_MODEL_PATH:-/data_storage/wyj/systems/huggingface/hub/Qwen35-4B}
 
 export SGLANG_API_KEY="${SGLANG_API_KEY}"
 export SERVED_MODEL_NAME="qwen3.5-4b"
@@ -57,6 +58,7 @@ export MEM_FRACTION_STATIC="0.8"
 export REASONING_PARSER="${REASONING_PARSER:-qwen3}"
 export TOOL_CALL_PARSER="${TOOL_CALL_PARSER:-qwen3_coder}"
 export SGLANG_LANGUAGE_ONLY="${SGLANG_LANGUAGE_ONLY:-1}"
+export SLIME_QWEN35_TEXT_ONLY_BRIDGE="${SLIME_QWEN35_TEXT_ONLY_BRIDGE:-1}"
 export PRM_M="${PRM_M:-1}"
 export OPENCLAW_OPD_TEACHER_LP_MAX_CONCURRENCY="${OPENCLAW_OPD_TEACHER_LP_MAX_CONCURRENCY:-1}"
 export OPENCLAW_COMBINE_W_RL="${OPENCLAW_COMBINE_W_RL:-1.0}"
@@ -188,12 +190,13 @@ ray start --head --node-ip-address "${MASTER_ADDR}" --num-gpus "${NUM_GPUS}" --d
 
 RUNTIME_ENV_JSON="{
   \"env_vars\": {
-    \"PYTHONPATH\": \"/absolute/path/to/OpenClaw-RL/Megatron-LM/:${SCRIPT_DIR}:${SCRIPT_DIR}/../openclaw-opd:${SLIME_ROOT}\",
+    \"PYTHONPATH\": \"${REPO_ROOT}/Megatron-LM:${SCRIPT_DIR}:${REPO_ROOT}/openclaw-opd:${SLIME_ROOT}\",
     \"CUDA_DEVICE_MAX_CONNECTIONS\": \"1\",
     \"FLASHINFER_WORKSPACE_BASE\": \"${FLASHINFER_WORKSPACE_BASE}\",
     \"OPENCLAW_EVAL_MODE\": \"${OPENCLAW_EVAL_MODE}\",
     \"OPENCLAW_COMBINE_W_RL\": \"${OPENCLAW_COMBINE_W_RL}\",
     \"OPENCLAW_COMBINE_W_OPD\": \"${OPENCLAW_COMBINE_W_OPD}\",
+    \"SLIME_QWEN35_TEXT_ONLY_BRIDGE\": \"${SLIME_QWEN35_TEXT_ONLY_BRIDGE}\",
     \"TRAIN_EPOCHS\": \"${TRAIN_EPOCHS}\"
   }
 }"
