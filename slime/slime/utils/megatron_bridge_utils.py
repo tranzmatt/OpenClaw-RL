@@ -74,12 +74,16 @@ def _use_text_only_qwen35_bridge() -> bool:
 
 
 def build_bridge_for_hf_checkpoint(hf_checkpoint: str, *, load_weights: bool):
-    import slime_plugins.megatron_bridge  # noqa: F401
     from transformers import AutoConfig
-    from megatron.bridge import AutoBridge
 
     hf_config = AutoConfig.from_pretrained(hf_checkpoint, trust_remote_code=True)
     model_type = getattr(hf_config, "model_type", None)
+
+    import slime_plugins.megatron_bridge as megatron_bridge_plugins
+
+    megatron_bridge_plugins.ensure_bridge_plugins_registered(model_type)
+
+    from megatron.bridge import AutoBridge
 
     if not _use_text_only_qwen35_bridge() and model_type == "qwen3_5" and hasattr(hf_config, "text_config"):
         from megatron.bridge.models.hf_pretrained.causal_lm import PreTrainedCausalLM
