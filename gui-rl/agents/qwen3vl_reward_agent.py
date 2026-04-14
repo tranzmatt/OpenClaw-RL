@@ -57,7 +57,7 @@ Assign a score of +1 if ALL of the following are true:
 Otherwise assign a score of -1, for example if the step is incorrect, irrelevant, impossible in context, has no visible effect,
 undoes progress, contradicts the next observation, or hallucinates tools/objects/facts.
 
-Think carefully, then provide your reasoning and put the final score in \boxed{{}}.
+Think carefully but DO NOT over-think, then provide your reasoning and put the final score in \boxed{{}}.
 """
 
 
