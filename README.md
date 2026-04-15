@@ -122,8 +122,8 @@ Our long-term goal is to **advance personalized, practically useful agents with 
 ✅ Deploy training on [Fireworks AI](https://fireworks.ai)
 
 #### Track 2 — [General Agents Optimization](#generalagent) (Scalable Infra)
-✅ **Release Track 2:** Scalable agentic RL infra for general agents
-✅ Support Qwen3.5
+✅ **Release Track 2:** Scalable agentic RL infra for general agents  
+✅ Support Qwen3.5  
 ⬜ Support more cloud services  
 
 
