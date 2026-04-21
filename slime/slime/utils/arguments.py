@@ -781,6 +781,48 @@ def get_slime_extra_args_provider(add_custom_arguments=None):
                 default=1,
                 help="Number of GPUs for the PRM teacher model (default 1, TP=1).",
             )
+            parser.add_argument(
+                "--prm-teacher-rotary-base",
+                type=float,
+                default=None,
+                help=(
+                    "Override --rotary-base for the PRM teacher only. Use when the teacher and "
+                    "the actor have different rope_theta (e.g. stock Qwen3-4B rope_theta=1e6 "
+                    "vs a long-context SFT fine-tune with rope_theta=5e6). "
+                    "Defaults to --rotary-base when unset."
+                ),
+            )
+            parser.add_argument(
+                "--prm-teacher-megatron-to-hf-mode",
+                choices=["raw", "bridge"],
+                default=None,
+                help=(
+                    "Override --megatron-to-hf-mode for the PRM teacher only. When unset, the "
+                    "teacher inherits the global --megatron-to-hf-mode. Setting this to a "
+                    "different value than the student is the supported way to mix modes "
+                    "(e.g. raw student + bridge teacher, or raw student of one size + raw "
+                    "teacher of a different size). In 'raw' mode the teacher's architectural "
+                    "fields (num_layers / hidden_size / ffn_hidden_size / num_query_groups / "
+                    "kv_channels / vocab / RoPE / etc.) are auto-populated from the teacher's "
+                    "torch_dist common.pt, so the teacher can be a different model size than "
+                    "the student's MODEL_ARGS (e.g. Qwen3-8B teacher with Qwen3-4B student). "
+                    "In 'bridge' mode the architecture is built from the teacher's HF config; "
+                    "use --prm-teacher-hf-checkpoint to point at the teacher's HF directory "
+                    "when --prm-teacher-load is a torch_dist directory."
+                ),
+            )
+            parser.add_argument(
+                "--prm-teacher-hf-checkpoint",
+                type=str,
+                default=None,
+                help=(
+                    "Override --hf-checkpoint for the PRM teacher only. Used for the teacher's "
+                    "tokenizer and HF-config lookup, and as the bridge source when "
+                    "--prm-teacher-megatron-to-hf-mode=bridge. Required for bridge teacher "
+                    "when --prm-teacher-load is a torch_dist (non-HF) directory. Defaults to "
+                    "the actor's --hf-checkpoint when unset."
+                ),
+            )
             reset_arg(parser, "--load", type=str, default=None)
             reset_arg(parser, "--save", type=str, default=None)
             reset_arg(parser, "--save-interval", type=int, default=None)
@@ -891,6 +933,19 @@ def get_slime_extra_args_provider(add_custom_arguments=None):
                 default=0,
                 help="Number of top-K teacher logprobs for logits-based distillation loss. "
                 "Set to >0 (e.g. 50) to enable top-K distillation via custom_loss.",
+            )
+            parser.add_argument(
+                "--distill-subset-mode",
+                type=str,
+                choices=["student", "teacher", "overlap"],
+                default="student",
+                help=(
+                    "How the per-token subset Sₜ is selected for top-K OPD: "
+                    "'student' (default) = student top-K (extra teacher gather pass), "
+                    "'teacher' = teacher top-K (extra student-old gather pass), "
+                    "'overlap' = student top-K ∩ teacher top-K (no extra pass). "
+                    "Only consumed when --distill-topk > 0."
+                ),
             )
             parser.add_argument(
                 "--use-kl-loss", action="store_true", default=False, help="whether to use KL loss from GRPO"

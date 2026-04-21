@@ -39,8 +39,25 @@ def train(args):
             rollout_data_next_future = rollout_manager.generate.remote(rollout_id + 1)
 
         if prm_teacher_model is not None:
-            prm_teacher_futures = prm_teacher_model.async_train(rollout_id, rollout_data_curr_ref)
-            prm_teacher_log_probs = ray.get(prm_teacher_futures[0])
+            distill_topk = int(getattr(args, "distill_topk", 0) or 0)
+            subset_mode = getattr(args, "distill_subset_mode", "student")
+            if distill_topk > 0 and subset_mode == "student":
+                # Three-pass dance for student-driven Sₜ:
+                #   1. actor runs old_actor → student top-K indices (rank 0 only).
+                #   2. PRM teacher runs forward gathering at those indices.
+                #   3. set on actor; actor.train re-runs old_actor with emit_topk
+                #      (recomputes the same student top-K) and proceeds to train.
+                student_topk = ray.get(
+                    actor_model.async_compute_student_topk(rollout_id, rollout_data_curr_ref)[0]
+                )
+                prm_teacher_log_probs = ray.get(
+                    prm_teacher_model.async_gather_at_indices(
+                        rollout_id, rollout_data_curr_ref, student_topk["topk_indices"]
+                    )[0]
+                )
+            else:
+                prm_teacher_futures = prm_teacher_model.async_train(rollout_id, rollout_data_curr_ref)
+                prm_teacher_log_probs = ray.get(prm_teacher_futures[0])
             actor_model.set_prm_teacher_log_probs(prm_teacher_log_probs)
 
         if args.use_critic:
