@@ -47,20 +47,19 @@ if [[ ! -d "${MEGATRON_LM_PATH}" ]]; then
     exit 1
 fi
 
-# Do not mix the bridge checkout's bundled Megatron with this script.
-# For text-only retool we intentionally use the repo's Megatron-LM tree.
 source "${SLIME_DIR}/scripts/models/qwen3.5-4B.sh"
 
 HF_CKPT=${HF_CKPT:-/data_storage/wyj/systems/huggingface/hub/Qwen35-4B}
-REF_LOAD=${REF_LOAD:-${HF_CKPT}}
+REF_LOAD=${REF_LOAD:-/data_storage/wyj/systems/huggingface/hub/qwen35-4b_torch_dist}
 SAVE_CKPT=${SAVE_CKPT:-/data_storage/wyj/OpenClaw-RL/ckpt/qwen35-4b-retool-rl/}
 RESUME_LOAD=${RESUME_LOAD:-${SAVE_CKPT}}
 
 export SGLANG_LANGUAGE_ONLY="${SGLANG_LANGUAGE_ONLY:-1}"
-export SLIME_QWEN35_TEXT_ONLY_BRIDGE="${SLIME_QWEN35_TEXT_ONLY_BRIDGE:-1}"
+# Qwen3.5 must use the raw spec path (slime_plugins/models/qwen3_5.py) to
+# preserve the hybrid linear/full-attention layout. Do NOT set
+# SLIME_QWEN35_TEXT_ONLY_BRIDGE or --megatron-to-hf-mode bridge here.
 
 CKPT_ARGS=(
-   --megatron-to-hf-mode bridge
    --hf-checkpoint "${HF_CKPT}"
    --ref-load "${REF_LOAD}"
    --save "${SAVE_CKPT}"
@@ -96,6 +95,8 @@ EVAL_ARGS=(
 )
 
 PERF_ARGS=(
+   # TP=4 + SP requires the gradient fix in slime_plugins/models/hf_attention.py
+   # for the hybrid linear-attention layers.
    --tensor-model-parallel-size 4
    --sequence-parallel
    --pipeline-model-parallel-size 1
@@ -105,6 +106,8 @@ PERF_ARGS=(
    --recompute-granularity full
    --recompute-method uniform
    --recompute-num-layers 1
+   # Stay on thd (dynamic batching). The spec path requires
+   # packed_seq_params.cu_seqlens_q, which bshd does not provide.
    --use-dynamic-batch-size
    --max-tokens-per-gpu 16384
    --log-probs-chunk-size 1024
@@ -177,7 +180,6 @@ RUNTIME_ENV_JSON="{
     \"NCCL_NVLS_ENABLE\": \"${HAS_NVLINK}\",
     \"FLASHINFER_WORKSPACE_BASE\": \"${FLASHINFER_WORKSPACE_BASE}\",
     \"PYTORCH_CUDA_ALLOC_CONF\": \"${PYTORCH_CUDA_ALLOC_CONF}\",
-    \"SLIME_QWEN35_TEXT_ONLY_BRIDGE\": \"${SLIME_QWEN35_TEXT_ONLY_BRIDGE}\",
     \"MEGATRON_LM_PATH\": \"${MEGATRON_LM_PATH}\",
     \"HF_CKPT\": \"${HF_CKPT}\"
   }
